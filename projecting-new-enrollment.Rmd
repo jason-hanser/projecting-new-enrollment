@@ -1,0 +1,145 @@
+---
+output: 
+  html_document:
+    theme: default
+    highlight: haddock
+---
+
+# Projecting New Student Enrollment
+
+### Introduction
+
+
+
+
+
+
+### General Framework
+
+
+``` {r fig.height = 2.25, echo = FALSE, fig.align = "center", message = FALSE}
+
+library(png)
+library(grid)
+
+img <- readPNG("G:/My Drive/Institutional Effectiveness Home/Jason/Git Projects/projecting-new-enrollment/Images/slide_1.png")
+
+grid.raster(img)
+
+```
+
+
+``` {r fig.height = 3, echo = FALSE, fig.align = "center", message = FALSE}
+
+img <- readPNG("G:/My Drive/Institutional Effectiveness Home/Jason/Git Projects/projecting-new-enrollment/Images/slide_2.png")
+
+grid.raster(img)
+
+```
+
+
+
+``` {r fig.height = 3, echo = FALSE, fig.align = "center", message = FALSE}
+
+img <- readPNG("G:/My Drive/Institutional Effectiveness Home/Jason/Git Projects/projecting-new-enrollment/Images/slide_3.png")
+
+grid.raster(img)
+
+```
+
+
+### Detailed Walkthrough
+
+block 1
+
+``` {r, attr.source = ".numberLines", eval = FALSE}
+
+  for (i in 1:4) {
+    
+    ## Filtering data to only include relevant years
+  
+    temp_years <- data.frame(NUMB_Entry_Year = sort(x = unique(ml_data$NUMB_Entry_Year), 
+                                                    decreasing = TRUE)[(i):(i+years_of_data)],
+                             WEIGHT          = c(1, rep(seq(to   = 1/years_of_data, 
+                                                            from = 1, 
+                                                            length.out = years_of_data))))
+    
+    ml_data %>%
+      inner_join(y  = temp_years,
+                 by = c("NUMB_Entry_Year" = "NUMB_Entry_Year")) -> temp_ml_data
+    
+    rm(temp_years)
+
+
+```
+
+
+block 2
+
+``` {r, attr.source = ".numberLines", eval = FALSE}
+    ## Getting training data
+    
+    temp_ml_data %>%
+      filter(NUMB_Entry_Year != max(NUMB_Entry_Year)) -> train_data
+    
+    
+    ## Getting a weighted sample of training data (if specified)
+    
+    if (weight_years == TRUE) {
+      
+      set.seed(1958)
+      
+      train_data <- train_data[sample(x       = nrow(train_data), nrow(train_data), 
+                                      prob    = train_data$WEIGHT, 
+                                      replace = TRUE), ]
+      
+    }
+
+```
+
+
+block 3
+
+``` {r, attr.source = ".numberLines", eval = FALSE}
+      
+## Fitting data to model 
+
+set.seed(1958)
+
+temp_rf <- randomForest(x = train_data[, variables$Variable_Code],
+                        y = train_data[, "OUT_May_5_Deposit"],
+                        ntree = if(i == 1) {500} else {500})
+```
+
+
+block 4
+
+``` {r, attr.source = ".numberLines", eval = FALSE}
+
+## Getting predictions for test data
+
+temp_preds <- predict(object  = temp_rf,
+                      newdata = ml_data[ml_data$NUMB_Entry_Year == max(temp_ml_data$NUMB_Entry_Year),
+                                        variables$Variable_Code],
+                      type    = "prob")[, 2]
+
+ml_data[ml_data$NUMB_Entry_Year == max(temp_ml_data$NUMB_Entry_Year), "PRED_OUT_May_5_Deposit"] <- temp_preds
+
+
+## Variable Importance
+
+temp_var_imp <- data.frame(Entry_Year    = max(temp_ml_data$NUMB_Entry_Year),
+                           Model         = "May_5_Deposit",
+                           Variable_Code = row.names(temp_rf$importance),
+                           Importance    = as.numeric(temp_rf$importance),
+                           r_Importance  = as.numeric(temp_rf$importance)/max(as.numeric(temp_rf$importance)))
+
+
+var_importance <- rbind(var_importance, temp_var_imp)
+
+```
+
+
+
+### Final Remarks
+
